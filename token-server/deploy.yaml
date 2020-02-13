@@ -1,0 +1,71 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: token-server
+  namespace: token-test
+
+---
+apiVersion: rbac.authorization.k8s.io/v1beta1
+kind: ClusterRoleBinding
+metadata:
+  name: tokenreview-binding-token-server
+  namespace: token-test
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: system:auth-delegator
+subjects:
+  - kind: ServiceAccount
+    name: token-server
+    namespace: token-test
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: token-server
+  name: token-server
+  namespace: token-test
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: token-server
+  strategy:
+    rollingUpdate:
+      maxUnavailable: 1
+  template:
+    metadata:
+      labels:
+        app: token-server
+    spec:
+      serviceAccountName: token-server
+      containers:
+        - image: kangwoo/token-server:0.0.1
+          name: token-server
+          ports:
+            - containerPort: 8090
+          resources:
+            limits:
+              cpu: 100m
+              memory: 64Mi
+            requests:
+              cpu: 100m
+              memory: 64Mi
+
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: token-server
+  name: token-server
+  namespace: token-test
+spec:
+  ports:
+    - name: http
+      port: 8090
+  selector:
+    app: token-server
